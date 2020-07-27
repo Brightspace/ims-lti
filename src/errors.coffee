@@ -17,7 +17,7 @@ class NonceError extends Error
   constructor: (message) ->
     super(message)
 class OutcomeResponseError extends Error
-  constructor: (message) ->
+  constructor: (message, @codeMinor) ->
     super(message)
 
 module.exports =
