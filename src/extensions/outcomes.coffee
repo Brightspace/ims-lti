@@ -135,9 +135,11 @@ class OutcomeService
     @_send_request doc, (err, result, xml) =>
       return callback(err, result) if err
 
-      score = parseFloat navigateXml(xml, 'imsx_POXBody.readResultResponse.result.resultScore.textString'), 10
+      score = navigateXml(xml, 'imsx_POXBody.readResultResponse.result.resultScore.textString')
+      if (score != '')
+        score = parseFloat score, 10
 
-      if (isNaN(score))
+      if (score != '' && isNaN(score))
         callback new errors.OutcomeResponseError('Invalid score response', 'invalidlineitemtype'), false
       else
         callback null, score
