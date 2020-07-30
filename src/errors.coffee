@@ -19,6 +19,7 @@ class NonceError extends Error
 class OutcomeResponseError extends Error
   constructor: (message, @codeMinor) ->
     super(message)
+    this.message = message
 
 module.exports =
   ConsumerError: ConsumerError
