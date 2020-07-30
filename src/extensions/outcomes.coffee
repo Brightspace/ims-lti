@@ -135,10 +135,12 @@ class OutcomeService
     @_send_request doc, (err, result, xml) =>
       return callback(err, result) if err
 
-      score = parseFloat navigateXml(xml, 'imsx_POXBody.readResultResponse.result.resultScore.textString'), 10
+      score = navigateXml(xml, 'imsx_POXBody.readResultResponse.result.resultScore.textString')
+      if (score != '')
+        score = parseFloat score, 10
 
-      if (isNaN(score))
-        callback new errors.OutcomeResponseError('Invalid score response'), false
+      if (score != '' && isNaN(score))
+        callback new errors.OutcomeResponseError('Invalid score response', 'invalidlineitemtype'), false
       else
         callback null, score
 
@@ -203,14 +205,15 @@ class OutcomeService
 
   _process_response: (body, callback) ->
     xml2js.parseString body, trim: true, (err, result) =>
-      return callback new errors.OutcomeResponseError('The server responsed with an invalid XML document'), false if err
+      return callback new errors.OutcomeResponseError('The server responsed with an invalid XML document', 'invaliddata'), false if err
 
       response  = result?.imsx_POXEnvelopeResponse
       code      = navigateXml response, 'imsx_POXHeader.imsx_POXResponseHeaderInfo.imsx_statusInfo.imsx_codeMajor'
 
       if code != 'success'
         msg = navigateXml response, 'imsx_POXHeader.imsx_POXResponseHeaderInfo.imsx_statusInfo.imsx_description'
-        callback new errors.OutcomeResponseError(msg), false
+        codeMinor = navigateXml response, 'imsx_POXHeader.imsx_POXResponseHeaderInfo.imsx_statusInfo.imsx_codeMinor'
+        callback new errors.OutcomeResponseError(msg, codeMinor), false
       else
         callback null, true, response
 

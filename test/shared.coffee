@@ -7,6 +7,7 @@ should       = require 'should'
 xml2js       = require 'xml2js'
 xml_builder  = require 'xmlbuilder'
 
+constants    = require './constants'
 hmac_sha1    = require '../src/hmac-sha1'
 
 
@@ -230,6 +231,28 @@ exports.outcomesWebServer = () =>
     res.end doc.end() + '\n'
 
 
+  nonexistentSourcedIdError = (res) =>
+    res.writeHead 404, 'Content-Type': 'application/xml'
+
+    doc   = buildXmlDocument()
+    head  = doc.ele('imsx_POXHeader').ele('imsx_POXResponseHeaderInfo')
+
+    doc.ele 'imsx_POXBody'
+
+    head.ele 'imsx_version', 'V1.0'
+    head.ele 'imsx_messageIdentifier', uuid.v4()
+
+    sub_head = head.ele 'imsx_statusInfo'
+    sub_head.ele 'imsx_codeMajor', 'failure'
+    sub_head.ele 'imsx_codeMinor', 'nosourcedids'
+    sub_head.ele 'imsx_severity', 'sourcedid'
+    sub_head.ele 'imsx_description', 'No outcome data found for the given sourcedid'
+    sub_head.ele 'imsx_messageRefIdentifier', uuid.v4()
+    sub_head.ele 'imsx_operationRefIdentifier', 'score'
+
+    res.end doc.end() + '\n'
+
+
   invalidScoreError = (res) =>
     res.writeHead 403, 'Content-Type': 'application/xml'
 
@@ -295,6 +318,31 @@ exports.outcomesWebServer = () =>
     res.end doc.end() + '\n'
 
 
+  # As per the LTI spec, attempting to read a result score that cannot be accessed
+  # returns a 'fullsuccess' with an empty result score 'textString'.
+  invalidReadResponse = (res) =>
+    res.writeHead 200, 'Content-Type': 'application/xml'
+
+    doc   = buildXmlDocument()
+    head  = doc.ele('imsx_POXHeader').ele('imsx_POXResponseHeaderInfo')
+
+    result = doc.ele('imsx_POXBody').ele('readResultResponse').ele('result').ele('resultScore')
+    result.ele 'language', 'en'
+    result.ele 'textString', ''
+
+    head.ele 'imsx_version', 'V1.0'
+    head.ele 'imsx_messageIdentifier', uuid.v4()
+
+    sub_head = head.ele 'imsx_statusInfo'
+    sub_head.ele 'imsx_codeMajor', 'success'
+    sub_head.ele 'imsx_severity', 'status'
+    sub_head.ele 'imsx_description', 'Result read'
+    sub_head.ele 'imsx_messageRefIdentifier', uuid.v4()
+    sub_head.ele 'imsx_operationRefIdentifier', 'readResult'
+
+    res.end doc.end() + '\n'
+
+
   validDeleteResponse = (res) =>
     res.writeHead 200, 'Content-Type': 'application/xml'
 
@@ -314,6 +362,10 @@ exports.outcomesWebServer = () =>
     sub_head.ele 'imsx_operationRefIdentifier', 'deleteResult'
 
     res.end doc.end() + '\n'
+
+  invalidXmlResponse = (res) =>
+    res.writeHead 404, 'Content-Type': 'application/xml'
+    res.end '<invalid>\n'
 
   verifyDoc = (doc) =>
     doc.should.be.an.Object;
@@ -344,7 +396,13 @@ exports.outcomesWebServer = () =>
             # As ugly as this may be this is one of the most effective XML parsers for node... yeah...
             score = parseFloat result_body?.replaceResultRequest?[0].resultRecord?[0].result?[0].resultScore?[0].textString?[0], 10
 
-            if (score < 0 or score > 1)
+            sourcedId = result_body?.replaceResultRequest?[0].resultRecord?[0].sourcedGUID?[0].sourcedId?[0]
+
+            if sourcedId == constants.NONEXISTENT_SOURCEDID
+              return nonexistentSourcedIdError res
+            else if sourcedId == constants.INVALID_XML_SOURCEDID
+              return invalidXmlResponse res
+            else if (score < 0 or score > 1)
               return invalidScoreError res
             else
               return validScoreResponse res, null, score
@@ -352,12 +410,24 @@ exports.outcomesWebServer = () =>
           when 'readResultRequest'
             verifyDoc result_body?.readResultRequest?[0].resultRecord[0]
 
-            return validReadResponse res
+            sourcedId = result_body?.readResultRequest?[0].resultRecord?[0].sourcedGUID?[0].sourcedId?[0]
+            if sourcedId == constants.NONEXISTENT_SOURCEDID
+              return invalidReadResponse res
+            else if sourcedId == constants.INVALID_XML_SOURCEDID
+              return invalidXmlResponse res
+            else
+              return validReadResponse res
 
           when 'deleteResultRequest'
             verifyDoc result_body?.deleteResultRequest?[0].resultRecord[0]
 
-            return validDeleteResponse res
+            sourcedId = result_body?.deleteResultRequest?[0].resultRecord?[0].sourcedGUID?[0].sourcedId?[0]
+            if sourcedId == constants.NONEXISTENT_SOURCEDID
+              return nonexistentSourcedIdError res
+            else if sourcedId == constants.INVALID_XML_SOURCEDID
+              return invalidXmlResponse res
+            else
+              return validDeleteResponse res
 
           else
             return outcomeTypeNotFoundHandler(res, result_type or 'undefinedRequest')

@@ -85,6 +85,45 @@ describe 'LTI.Extensions.Outcomes', () =>
         result.should.equal false
         next()
 
+    it 'should return an error with codeMinor set to nosourcedids when accessing a nonexistent sourcedid', (next) =>
+      provider  = new lti.Provider 'key', 'secret'
+      req =
+        url: '/test'
+        method: 'POST'
+        body:
+          ext_outcome_data_values_accepted: 'text,url'
+          lis_outcome_service_url: "http://127.0.0.1:1337/service/url"
+          lis_result_sourcedid: "00000000-0000-0000-0000-000000000000"
+          lti_message_type: "basic-lti-launch-request"
+          lti_version: "LTI-1p0"
+        get: () -> 'localhost'
+      provider.parse_request req
+
+      provider.outcome_service.send_replace_result .5, (err, result) =>
+        should.exist err
+        should.exist err.codeMinor
+        err.codeMinor.should.equal 'nosourcedids'
+        next()
+
+    it 'should return an error with codeMinor set to invaliddata when TC responds with invalid XML', (next) =>
+      provider  = new lti.Provider 'key', 'secret'
+      req =
+        url: '/test'
+        method: 'POST'
+        body:
+          ext_outcome_data_values_accepted: 'text,url'
+          lis_outcome_service_url: "http://127.0.0.1:1337/service/url"
+          lis_result_sourcedid: "11111111-1111-1111-1111-111111111111"
+          lti_message_type: "basic-lti-launch-request"
+          lti_version: "LTI-1p0"
+        get: () -> 'localhost'
+      provider.parse_request req
+
+      provider.outcome_service.send_replace_result .5, (err, result) =>
+        should.exist err
+        should.exist err.codeMinor
+        err.codeMinor.should.equal 'invaliddata'
+        next()
 
   describe 'read', () =>
     it 'should be able to read a result given an id', (next) =>
@@ -93,9 +132,88 @@ describe 'LTI.Extensions.Outcomes', () =>
         result.should.equal .5
         next()
 
+    it 'should return an empty score given a nonexistent sourcedid', (next) =>
+      provider  = new lti.Provider 'key', 'secret'
+      req =
+        url: '/test'
+        method: 'POST'
+        body:
+          ext_outcome_data_values_accepted: 'text,url'
+          lis_outcome_service_url: "http://127.0.0.1:1337/service/url"
+          lis_result_sourcedid: "00000000-0000-0000-0000-000000000000"
+          lti_message_type: "basic-lti-launch-request"
+          lti_version: "LTI-1p0"
+        get: () -> 'localhost'
+      provider.parse_request req
+
+      provider.outcome_service.send_read_result (err, result) =>
+        should.not.exist err
+        result.should.equal ''
+        next()
+
+    it 'should return an error with codeMinor set to invaliddata when TC responds with invalid XML', (next) =>
+      provider  = new lti.Provider 'key', 'secret'
+      req =
+        url: '/test'
+        method: 'POST'
+        body:
+          ext_outcome_data_values_accepted: 'text,url'
+          lis_outcome_service_url: "http://127.0.0.1:1337/service/url"
+          lis_result_sourcedid: "11111111-1111-1111-1111-111111111111"
+          lti_message_type: "basic-lti-launch-request"
+          lti_version: "LTI-1p0"
+        get: () -> 'localhost'
+      provider.parse_request req
+
+      provider.outcome_service.send_read_result (err, result) =>
+        should.exist err
+        should.exist err.codeMinor
+        err.codeMinor.should.equal 'invaliddata'
+        next()
+
   describe 'delete', () =>
     it 'should be able to delete a result given an id', (next) =>
       @provider.outcome_service.send_delete_result (err, result) =>
         should.not.exist err
         result.should.equal true
+        next()
+
+    it 'should return an error with codeMinor set to nosourcedids when accessing a nonexistent sourcedid', (next) =>
+      provider  = new lti.Provider 'key', 'secret'
+      req =
+        url: '/test'
+        method: 'POST'
+        body:
+          ext_outcome_data_values_accepted: 'text,url'
+          lis_outcome_service_url: "http://127.0.0.1:1337/service/url"
+          lis_result_sourcedid: "00000000-0000-0000-0000-000000000000"
+          lti_message_type: "basic-lti-launch-request"
+          lti_version: "LTI-1p0"
+        get: () -> 'localhost'
+      provider.parse_request req
+
+      provider.outcome_service.send_delete_result (err, result) =>
+        should.exist err
+        should.exist err.codeMinor
+        err.codeMinor.should.equal 'nosourcedids'
+        next()
+
+    it 'should return an error with codeMinor set to invaliddata when TC responds with invalid XML', (next) =>
+      provider  = new lti.Provider 'key', 'secret'
+      req =
+        url: '/test'
+        method: 'POST'
+        body:
+          ext_outcome_data_values_accepted: 'text,url'
+          lis_outcome_service_url: "http://127.0.0.1:1337/service/url"
+          lis_result_sourcedid: "11111111-1111-1111-1111-111111111111"
+          lti_message_type: "basic-lti-launch-request"
+          lti_version: "LTI-1p0"
+        get: () -> 'localhost'
+      provider.parse_request req
+
+      provider.outcome_service.send_delete_result (err, result) =>
+        should.exist err
+        should.exist err.codeMinor
+        err.codeMinor.should.equal 'invaliddata'
         next()
