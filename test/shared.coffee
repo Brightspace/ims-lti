@@ -363,6 +363,10 @@ exports.outcomesWebServer = () =>
 
     res.end doc.end() + '\n'
 
+  invalidXmlResponse = (res) =>
+    res.writeHead 404, 'Content-Type': 'application/xml'
+    res.end '<invalid>\n'
+
   verifyDoc = (doc) =>
     doc.should.be.an.Object;
     doc.should.have.property('sourcedGUID').with.lengthOf(1);
@@ -396,6 +400,8 @@ exports.outcomesWebServer = () =>
 
             if sourcedId == constants.NONEXISTENT_SOURCEDID
               return nonexistentSourcedIdError res
+            else if sourcedId == constants.INVALID_XML_SOURCEDID
+              return invalidXmlResponse res
             else if (score < 0 or score > 1)
               return invalidScoreError res
             else
@@ -407,6 +413,8 @@ exports.outcomesWebServer = () =>
             sourcedId = result_body?.readResultRequest?[0].resultRecord?[0].sourcedGUID?[0].sourcedId?[0]
             if sourcedId == constants.NONEXISTENT_SOURCEDID
               return invalidReadResponse res
+            else if sourcedId == constants.INVALID_XML_SOURCEDID
+              return invalidXmlResponse res
             else
               return validReadResponse res
 
@@ -416,6 +424,8 @@ exports.outcomesWebServer = () =>
             sourcedId = result_body?.deleteResultRequest?[0].resultRecord?[0].sourcedGUID?[0].sourcedId?[0]
             if sourcedId == constants.NONEXISTENT_SOURCEDID
               return nonexistentSourcedIdError res
+            else if sourcedId == constants.INVALID_XML_SOURCEDID
+              return invalidXmlResponse res
             else
               return validDeleteResponse res
 
